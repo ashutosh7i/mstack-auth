@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JWT Auth Test Page</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    input, button { margin: 0.2em; }
+    .section { margin-bottom: 2em; }
+    pre { background: #f4f4f4; padding: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Fastify JWT Auth Test</h1>
+
+  <div class="section">
+    <h2>Signup</h2>
+    <input id="signup-username" placeholder="Username">
+    <input id="signup-password" placeholder="Password" type="password">
+    <button onclick="signup()">Signup</button>
+  </div>
+
+  <div class="section">
+    <h2>Login</h2>
+    <input id="login-username" placeholder="Username">
+    <input id="login-password" placeholder="Password" type="password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="section">
+    <h2>Verify Access Token</h2>
+    <input id="verify-token" placeholder="Access Token" style="width: 400px;">
+    <button onclick="verify()">Verify</button>
+  </div>
+
+  <div class="section">
+    <h2>Refresh Access Token</h2>
+    <input id="refresh-token" placeholder="Refresh Token" style="width: 400px;">
+    <button onclick="refresh()">Refresh</button>
+  </div>
+
+  <div class="section">
+    <h2>Logout (Revoke Refresh Token)</h2>
+    <input id="logout-refresh-token" placeholder="Refresh Token" style="width: 400px;">
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="section">
+    <h2>Tokens</h2>
+    <button onclick="copyTokens()">Copy Tokens to Inputs</button>
+    <pre id="tokens"></pre>
+  </div>
+
+  <div class="section">
+    <h2>API Response</h2>
+    <pre id="output"></pre>
+  </div>
+
+  <script>
+    const api = 'http://localhost:3000';
+    let tokens = {
+      accessToken: '',
+      refreshToken: ''
+    };
+
+    function output(data) {
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function updateTokensDisplay() {
+      document.getElementById('tokens').textContent = JSON.stringify(tokens, null, 2);
+    }
+
+    function copyTokens() {
+      document.getElementById('verify-token').value = tokens.accessToken;
+      document.getElementById('refresh-token').value = tokens.refreshToken;
+      document.getElementById('logout-refresh-token').value = tokens.refreshToken;
+    }
+
+    async function signup() {
+      const username = document.getElementById('signup-username').value;
+      const password = document.getElementById('signup-password').value;
+      const res = await fetch(api + '/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      output(data);
+    }
+
+    async function login() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const res = await fetch(api + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      output(data);
+      if (data.token && data.refreshToken) {
+        tokens.accessToken = data.token;
+        tokens.refreshToken = data.refreshToken;
+        updateTokensDisplay();
+      }
+    }
+
+    async function verify() {
+      const token = document.getElementById('verify-token').value;
+      const res = await fetch(api + '/verify', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json();
+      output(data);
+    }
+
+    async function refresh() {
+      const refreshToken = document.getElementById('refresh-token').value;
+      const res = await fetch(api + '/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+      const data = await res.json();
+      output(data);
+      if (data.token) {
+        tokens.accessToken = data.token;
+        updateTokensDisplay();
+      }
+    }
+
+    async function logout() {
+      const refreshToken = document.getElementById('logout-refresh-token').value;
+      const res = await fetch(api + '/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+      const data = await res.json();
+      output(data);
+      if (data.success) {
+        tokens.refreshToken = '';
+        updateTokensDisplay();
+      }
+    }
+
+    updateTokensDisplay();
+  </script>
+</body>
+</html>

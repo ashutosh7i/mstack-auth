@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "70ef6094-6757-430f-907a-7a4e96756fb2",
+  "id": "0e332cef-b478-4e45-9b6a-eae346826696",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "refresh_tokens": {
@@ -23,7 +23,7 @@
         },
         "token": {
           "name": "token",
-          "type": "varchar(200)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -62,14 +62,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "refresh_tokens_token_unique": {
-          "name": "refresh_tokens_token_unique",
-          "columns": [
-            "token"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "users": {

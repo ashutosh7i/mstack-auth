@@ -6,7 +6,6 @@ dotenv.config();
 
 const pool = mysql.createPool({
   uri: process.env.DATABASE_URL,
-  multipleStatements: true
 });
 
 export const db = drizzle({ client: pool });

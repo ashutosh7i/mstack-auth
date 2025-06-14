@@ -1,12 +1,11 @@
 CREATE TABLE `refresh_tokens` (
 	`id` varchar(36) NOT NULL,
 	`user_id` varchar(36) NOT NULL,
-	`token` varchar(200) NOT NULL,
+	`token` text NOT NULL,
 	`expires_at` timestamp NOT NULL,
 	`created_at` timestamp DEFAULT (now()),
 	`updated_at` timestamp DEFAULT (now()),
-	CONSTRAINT `refresh_tokens_id` PRIMARY KEY(`id`),
-	CONSTRAINT `refresh_tokens_token_unique` UNIQUE(`token`)
+	CONSTRAINT `refresh_tokens_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `users` (

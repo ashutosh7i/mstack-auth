@@ -1,7 +1,7 @@
 import {
   mysqlTable,
   timestamp,
-  varchar,
+  varchar
 } from "drizzle-orm/mysql-core";
 
 // Common timestamps for all tables

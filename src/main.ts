@@ -5,6 +5,7 @@ import fastifyBcrypt from "fastify-bcrypt";
 import fastifyEnv from "@fastify/env";
 import "fastify";
 
+// --- Type augmentations for Fastify ---
 declare module "fastify" {
   interface FastifyInstance {
     config: {
@@ -15,6 +16,7 @@ declare module "fastify" {
   }
 }
 
+// --- Type augmentations for JWT payload ---
 declare module "@fastify/jwt" {
   interface FastifyJWT {
     payload: { username: string; type: string };
@@ -22,19 +24,14 @@ declare module "@fastify/jwt" {
   }
 }
 
+// --- Env schema ---
 const schema = {
   type: "object",
   required: ["JWT_SECRET", "JWT_EXPIRY", "PORT"],
   properties: {
-    JWT_SECRET: {
-      type: "string",
-    },
-    JWT_EXPIRY: {
-      type: "string",
-    },
-    PORT: {
-      type: "string",
-    },
+    JWT_SECRET: { type: "string" },
+    JWT_EXPIRY: { type: "string" },
+    PORT: { type: "string" },
   },
 };
 
@@ -90,7 +87,7 @@ fastify.post(
 // Login endpoint
 fastify.post(
   "/login",
-  async (req: FastifyRequest<{ Body: AuthBody }>, reply) => {
+  async (req: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) => {
     try {
       const { username, password } = req.body;
       const user = users.find((u) => u.username === username);
@@ -116,19 +113,24 @@ fastify.post(
 );
 
 // JWT verification endpoint
-fastify.get("/verify", async (req, reply) => {
-  try {
-    await req.jwtVerify();
-    if (req.user.type !== "access") {
-      return reply.code(401).send({ valid: false, error: "Unauthorized" });
+fastify.get(
+  "/verify",
+  async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    try {
+      await req.jwtVerify();
+      const user = req.user as { username: string; type: string } | undefined;
+      if (!user || user.type !== "access") {
+        return reply.code(401).send({ valid: false, error: "Unauthorized" });
+      }
+      reply.send({ valid: true, user });
+    } catch (err) {
+      fastify.log.error(err);
+      reply.code(401).send({ valid: false, error: "Unauthorized" });
     }
-    reply.send({ valid: true, user: req.user });
-  } catch (err) {
-    fastify.log.error(err);
-    reply.code(401).send({ valid: false, error: "Unauthorized" });
   }
-});
+);
 
+// Refresh token endpoint
 fastify.post(
   "/refresh",
   async (
@@ -185,6 +187,7 @@ fastify.post(
   }
 );
 
+// Start server
 const start = async () => {
   try {
     await fastify.register(fastifyEnv, options);

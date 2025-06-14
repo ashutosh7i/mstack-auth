@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export default defineConfig({
-  out: "./migrations",
+  out: "./src/db/migrations",
   schema: "./src/db/schemas",
   dialect: "mysql",
   dbCredentials: {

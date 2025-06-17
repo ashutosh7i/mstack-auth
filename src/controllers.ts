@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import * as authDb from "./services";
+import * as argon2 from "argon2";
 
 // --- Types ---
 interface AuthBody {
@@ -24,7 +25,12 @@ export async function signupHandler(
     if (existing) {
       return reply.code(409).send({ error: "User already exists" });
     }
-    const hashedPassword = await req.server.bcrypt.hash(password);
+    const hashedPassword = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 12,
+      timeCost: 2,
+      parallelism: 1,
+    });
     await authDb.createUser(username, hashedPassword);
     reply.send({ success: true, message: "User registered successfully" });
   } catch (err) {
@@ -44,7 +50,7 @@ export async function loginHandler(
     if (!user) {
       return reply.code(401).send({ error: "Invalid credentials" });
     }
-    const isMatch = await req.server.bcrypt.compare(password, user.password);
+    const isMatch = await argon2.verify(user.password, password);
     if (!isMatch) {
       return reply.code(401).send({ error: "Invalid credentials" });
     }

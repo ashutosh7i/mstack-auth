@@ -20,6 +20,7 @@
     "@fastify/env": "^5.0.2",
     "@fastify/jwt": "^9.1.0",
     "@types/mysql": "^2.15.27",
+    "argon2": "^0.43.0",
     "dotenv": "^16.5.0",
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.44.2",

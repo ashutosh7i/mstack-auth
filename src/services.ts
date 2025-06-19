@@ -1,8 +1,9 @@
 import { db } from "src/db";
+import { and, eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { users } from "src/db/schemas/users";
 import { refreshTokens } from "./db/schemas/refreshTokens";
-import { eq } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { otpCodes } from "./db/schemas/otpCodes";
 
 export async function createUser(username: string, password: string) {
   const id = randomUUID();
@@ -35,11 +36,81 @@ export async function findRefreshToken(token: string) {
   return row;
 }
 export async function deleteUserRefreshToken(token: string): Promise<boolean> {
-  const [result] = await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
+  const [result] = await db
+    .delete(refreshTokens)
+    .where(eq(refreshTokens.token, token));
   return result.affectedRows > 0;
 }
 
-export async function deleteUserAllRefreshTokens(userId: string): Promise<number> {
-  const [result] = await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
+export async function deleteUserAllRefreshTokens(
+  userId: string
+): Promise<number> {
+  const [result] = await db
+    .delete(refreshTokens)
+    .where(eq(refreshTokens.userId, userId));
   return result.affectedRows;
+}
+
+export function generateOtpCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+export async function createOtpEntryAndMarkSent(phoneNo: string) {
+  const code = generateOtpCode();
+  const id = randomUUID();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+  await db.insert(otpCodes).values({
+    id,
+    contact: phoneNo,
+    code,
+    status: "sent",
+    expiresAt,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { code, id };
+}
+
+export async function verifyOtpCode(phoneNo: string, code: string) {
+  const [otp] = await db
+    .select()
+    .from(otpCodes)
+    .where(
+      and(
+        eq(otpCodes.contact, phoneNo),
+        eq(otpCodes.code, code),
+        eq(otpCodes.status, "sent")
+      )
+    );
+
+  if (!otp || otp.expiresAt < new Date()) {
+    return false;
+  }
+
+  await db
+    .update(otpCodes)
+    .set({ status: "verified" })
+    .where(
+      and(
+        eq(otpCodes.contact, phoneNo),
+        eq(otpCodes.code, code),
+        eq(otpCodes.status, "sent")
+      )
+    );
+
+  return true;
+}
+
+export async function markOtpUserCreated(phoneNo: string, code: string) {
+  await db
+    .update(otpCodes)
+    .set({ status: "user_created" })
+    .where(
+      and(
+        eq(otpCodes.contact, phoneNo),
+        eq(otpCodes.code, code),
+        eq(otpCodes.status, "verified")
+      )
+    );
 }

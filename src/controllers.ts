@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from "fastify";
+import { FastifyRequest, FastifyReply, FastifyInstance } from "fastify";
 import * as authDb from "./services";
 import * as argon2 from "argon2";
 
@@ -12,6 +12,13 @@ interface RefreshBody {
 }
 interface LogoutAllBody {
   userId: string;
+}
+interface PhoneNoBody {
+  phoneNo: string;
+}
+interface OtpLoginBody extends PhoneNoBody {}
+interface OtpVerifyBody extends PhoneNoBody {
+  otp: string;
 }
 
 // Signup handler
@@ -42,6 +49,24 @@ export async function signupHandler(
   }
 }
 
+export async function issueTokens(
+  user: { id: string; username: string },
+  jwt: FastifyInstance["jwt"],
+  insertRefreshToken: typeof authDb.insertRefreshToken
+) {
+  const token = jwt.sign({ username: user.username, type: "access" });
+  const refreshToken = jwt.sign(
+    { username: user.username, type: "refresh" },
+    { expiresIn: "7d" }
+  );
+  await insertRefreshToken(
+    user.id,
+    refreshToken,
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  );
+  return { token, refreshToken };
+}
+
 // Login handler
 export async function loginHandler(
   req: FastifyRequest<{ Body: AuthBody }>,
@@ -57,18 +82,12 @@ export async function loginHandler(
     if (!isMatch) {
       return reply.code(401).send({ error: "Invalid credentials" });
     }
-    const token = req.server.jwt.sign({ username, type: "access" });
-    const refreshToken = req.server.jwt.sign(
-      { username, type: "refresh" },
-      { expiresIn: "7d" }
+    const tokens = await issueTokens(
+      user,
+      req.server.jwt,
+      authDb.insertRefreshToken
     );
-    // Store refresh token in DB
-    await authDb.insertRefreshToken(
-      user.id,
-      refreshToken,
-      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    );
-    reply.send({ token, refreshToken });
+    reply.send(tokens);
   } catch (err) {
     req.server.log.error(err);
     reply.code(500).send({ error: "Something went wrong" });
@@ -136,7 +155,9 @@ export async function logoutHandler(
     }
     const deleted = await authDb.deleteUserRefreshToken(refreshToken);
     if (!deleted) {
-      return reply.code(400).send({ error: "Refresh token not found or already revoked" });
+      return reply
+        .code(400)
+        .send({ error: "Refresh token not found or already revoked" });
     }
     reply.send({ success: true, message: "Logged out" });
   } catch (err) {
@@ -156,9 +177,86 @@ export async function logoutAllHandler(
     }
     const deleted = await authDb.deleteUserAllRefreshTokens(userId);
     if (!deleted) {
-      return reply.code(400).send({ error: "No active sessions found for user" });
+      return reply
+        .code(400)
+        .send({ error: "No active sessions found for user" });
     }
-    reply.send({ success: true, tokensDeleted: deleted, message: "Logged out from all sessions" });
+    reply.send({
+      success: true,
+      tokensDeleted: deleted,
+      message: "Logged out from all sessions",
+    });
+  } catch (err) {
+    req.server.log.error(err);
+    reply.code(500).send({ error: "Something went wrong" });
+  }
+}
+
+export async function sendOtp(
+  req: FastifyRequest<{ Body: OtpLoginBody }>,
+  reply: FastifyReply
+) {
+  try {
+    const { phoneNo } = req.body;
+    if (!phoneNo) {
+      return reply.code(400).send({ error: "Phone number required" });
+    }
+    const { code, id } = await authDb.createOtpEntryAndMarkSent(phoneNo);
+
+    // Send OTP via SMS (async, don't block response)
+    // sendOtpSms(phoneNo, code).catch(err => req.server.log.error("SMS send failed", err));
+    console.log(`Generated OTP: ${code} for ID: ${id}`);
+    reply.send({ success: true, message: "OTP sent successfully", otp: code});
+  } catch (err) {
+    req.server.log.error(err);
+    reply.code(500).send({ error: "Something went wrong" });
+  }
+}
+
+export async function verifyOtp(
+  req: FastifyRequest<{ Body: OtpVerifyBody }>,
+  reply: FastifyReply
+) {
+  try {
+    const { phoneNo, otp } = req.body;
+    if (!phoneNo || !otp) {
+      return reply.code(400).send({ error: "Phone number and OTP required" });
+    }
+    const now = new Date();
+    const verify = await authDb.verifyOtpCode(phoneNo, otp);
+    if (!verify) {
+      return reply.code(400).send({ error: "Invalid or expired OTP" });
+    }
+    let user = await authDb.findUserByUsername(phoneNo);
+    let isNewUser = false;
+
+    if (!user) {
+      const userId = await authDb.createUser(phoneNo, "");
+      await Promise.all([authDb.markOtpUserCreated(phoneNo, otp)]);
+      user = {
+        id: userId,
+        username: phoneNo,
+        password: "",
+        createdAt: now,
+        updatedAt: now,
+      };
+      isNewUser = true;
+    } else {
+      await authDb.deleteUserAllRefreshTokens(user.id);
+    }
+    const tokens = await issueTokens(
+      user,
+      req.server.jwt,
+      authDb.insertRefreshToken
+    );
+    return reply.send({
+      success: true,
+      newUser: isNewUser,
+      message: isNewUser
+        ? "OTP verified and user created successfully"
+        : "OTP verified successfully, previous sessions revoked",
+      ...tokens,
+    });
   } catch (err) {
     req.server.log.error(err);
     reply.code(500).send({ error: "Something went wrong" });

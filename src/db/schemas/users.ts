@@ -1,7 +1,9 @@
 import {
   mysqlTable,
   timestamp,
-  varchar
+  varchar,
+  uniqueIndex,
+  index,
 } from "drizzle-orm/mysql-core";
 
 // Common timestamps for all tables
@@ -13,9 +15,17 @@ const timestamps = {
 };
 
 // Users table schema
-export const users = mysqlTable("users", {
-  id: varchar("id", { length: 36 }).primaryKey(), // UUID
-  username: varchar("username", { length: 64 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
-  ...timestamps,
-});
+export const users = mysqlTable(
+  "users",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(), // UUID
+    username: varchar("username", { length: 64 }).notNull(),
+    password: varchar("password", { length: 255 }).notNull(),
+    ...timestamps,
+  },
+  // Indexes
+  (table) => ({
+    idIdx: index("users_id_idx").on(table.id),
+    usernameIdx: uniqueIndex("users_username_unique").on(table.username),
+  })
+);

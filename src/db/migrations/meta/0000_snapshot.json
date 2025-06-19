@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "7a159a97-68ee-46ff-bf6f-dbd30a50e364",
+  "id": "70421b62-583e-420c-a9c4-ab0f7c0d4f1c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "otp_codes": {
@@ -59,7 +59,29 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "otp_codes_id_idx": {
+          "name": "otp_codes_id_idx",
+          "columns": [
+            "id"
+          ],
+          "isUnique": false
+        },
+        "otp_codes_contact_idx": {
+          "name": "otp_codes_contact_idx",
+          "columns": [
+            "contact"
+          ],
+          "isUnique": false
+        },
+        "otp_codes_code_idx": {
+          "name": "otp_codes_code_idx",
+          "columns": [
+            "code"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "otp_codes_id": {
@@ -91,7 +113,7 @@
         },
         "token": {
           "name": "token",
-          "type": "text",
+          "type": "varchar(512)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -120,7 +142,22 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "refresh_tokens_user_id_idx": {
+          "name": "refresh_tokens_user_id_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "refresh_tokens_token_idx": {
+          "name": "refresh_tokens_token_idx",
+          "columns": [
+            "token"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "refresh_tokens_id": {
@@ -174,7 +211,22 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "users_id_idx": {
+          "name": "users_id_idx",
+          "columns": [
+            "id"
+          ],
+          "isUnique": false
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "columns": [
+            "username"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "users_id": {
@@ -184,14 +236,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "users_username_unique": {
-          "name": "users_username_unique",
-          "columns": [
-            "username"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     }
   },

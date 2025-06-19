@@ -5,6 +5,7 @@ import {
   verifyHandler,
   refreshHandler,
   logoutHandler,
+  logoutAllHandler
 } from "./controllers";
 
 export async function authRouter(fastify: FastifyInstance) {
@@ -13,4 +14,5 @@ export async function authRouter(fastify: FastifyInstance) {
   fastify.get("/verify", verifyHandler);
   fastify.post("/refresh", refreshHandler);
   fastify.post("/logout", logoutHandler);
+  fastify.post("/logoutall", logoutAllHandler)
 }

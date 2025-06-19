@@ -10,6 +10,9 @@ interface AuthBody {
 interface RefreshBody {
   refreshToken: string;
 }
+interface LogoutAllBody {
+  userId: string;
+}
 
 // Signup handler
 export async function signupHandler(
@@ -127,9 +130,35 @@ export async function logoutHandler(
   reply: FastifyReply
 ) {
   try {
-    const { refreshToken } = req.body;
-    await authDb.deleteRefreshToken(refreshToken);
+    const { refreshToken } = req.body || {};
+    if (!refreshToken) {
+      return reply.code(400).send({ error: "Refresh token required" });
+    }
+    const deleted = await authDb.deleteUserRefreshToken(refreshToken);
+    if (!deleted) {
+      return reply.code(400).send({ error: "Refresh token not found or already revoked" });
+    }
     reply.send({ success: true, message: "Logged out" });
+  } catch (err) {
+    req.server.log.error(err);
+    reply.code(500).send({ error: "Something went wrong" });
+  }
+}
+
+export async function logoutAllHandler(
+  req: FastifyRequest<{ Body: LogoutAllBody }>,
+  reply: FastifyReply
+) {
+  try {
+    const { userId } = req.body || {};
+    if (!userId) {
+      return reply.code(400).send({ error: "User ID required" });
+    }
+    const deleted = await authDb.deleteUserAllRefreshTokens(userId);
+    if (!deleted) {
+      return reply.code(400).send({ error: "No active sessions found for user" });
+    }
+    reply.send({ success: true, tokensDeleted: deleted, message: "Logged out from all sessions" });
   } catch (err) {
     req.server.log.error(err);
     reply.code(500).send({ error: "Something went wrong" });

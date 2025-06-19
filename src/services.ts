@@ -34,7 +34,12 @@ export async function findRefreshToken(token: string) {
     .where(eq(refreshTokens.token, token));
   return row;
 }
+export async function deleteUserRefreshToken(token: string): Promise<boolean> {
+  const [result] = await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
+  return result.affectedRows > 0;
+}
 
-export async function deleteRefreshToken(token: string) {
-  await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
+export async function deleteUserAllRefreshTokens(userId: string): Promise<number> {
+  const [result] = await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
+  return result.affectedRows;
 }

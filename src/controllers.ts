@@ -226,8 +226,8 @@ export async function verifyOtp(
       return reply.code(400).send({ error: "Phone number and OTP required" });
     }
     const now = new Date();
-    const verify = await authDb.verifyOtpCode(phoneNo, otp);
-    if (!verify) {
+    const isValid = await authDb.verifyOtpCode(phoneNo, otp);
+    if (!isValid) {
       return reply.code(400).send({ error: "Invalid or expired OTP" });
     }
     let user = await authDb.findUserByUsername(phoneNo);
@@ -235,7 +235,7 @@ export async function verifyOtp(
 
     if (!user) {
       const userId = await authDb.createUser(phoneNo, "");
-      await Promise.all([authDb.markOtpUserCreated(phoneNo, otp)]);
+      await authDb.markOtpUserCreated(phoneNo, otp);
       user = {
         id: userId,
         username: phoneNo,
@@ -245,6 +245,7 @@ export async function verifyOtp(
       };
       isNewUser = true;
     } else {
+      await authDb.markOtpVerifiedIfNeeded(phoneNo, otp);
       await authDb.deleteUserAllRefreshTokens(user.id);
     }
     const tokens = await issueTokens(

@@ -1,5 +1,5 @@
 import { db } from "src/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { users } from "src/db/schemas/users";
 import { refreshTokens } from "./db/schemas/refreshTokens";
@@ -80,14 +80,20 @@ export async function verifyOtpCode(phoneNo: string, code: string) {
       and(
         eq(otpCodes.contact, phoneNo),
         eq(otpCodes.code, code),
-        eq(otpCodes.status, "sent")
+        or(
+          eq(otpCodes.status, "sent"),
+          eq(otpCodes.status, "generated")
+        )
       )
     );
 
   if (!otp || otp.expiresAt < new Date()) {
     return false;
   }
+  return true;
+}
 
+export async function markOtpVerifiedIfNeeded(phoneNo: string, code: string) {
   await db
     .update(otpCodes)
     .set({ status: "verified" })
@@ -95,11 +101,12 @@ export async function verifyOtpCode(phoneNo: string, code: string) {
       and(
         eq(otpCodes.contact, phoneNo),
         eq(otpCodes.code, code),
-        eq(otpCodes.status, "sent")
+        or(
+          eq(otpCodes.status, "sent"),
+          eq(otpCodes.status, "generated")
+        )
       )
     );
-
-  return true;
 }
 
 export async function markOtpUserCreated(phoneNo: string, code: string) {

@@ -90,6 +90,62 @@ async function refreshAfterLogout(refreshToken) {
     return data;
 }
 
+// OTP-based login tests
+async function otpSend(phoneNo) {
+    const res = await fetch(`${API}/otp-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNo })
+    });
+    return res.json();
+}
+
+async function otpVerify(phoneNo, otp) {
+    const res = await fetch(`${API}/otp-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNo, otp })
+    });
+    return res.json();
+}
+
+async function runOtpTests() {
+    // Use a dynamic phone number for each test run
+    const phoneNew = '1' + Math.floor(1000000000 + Math.random() * 9000000000);
+    let res = await otpSend(phoneNew);
+    let verifyRes = await otpVerify(phoneNew, res.otp);
+    results.otpNewUser = res.success && res.otp && verifyRes.success && verifyRes.newUser === true;
+
+    // Existing user OTP login (same phone number)
+    res = await otpSend(phoneNew);
+    verifyRes = await otpVerify(phoneNew, res.otp);
+    results.otpExistingUser = res.success && res.otp && verifyRes.success && verifyRes.newUser === false;
+
+    // Invalid OTP
+    const phoneInvalid = '1' + Math.floor(1000000000 + Math.random() * 9000000000);
+    res = await otpSend(phoneInvalid);
+    verifyRes = await otpVerify(phoneInvalid, '000000');
+    results.otpInvalid = verifyRes && verifyRes.success === false;
+
+    // Missing phone number
+    const resMissing = await fetch(`${API}/otp-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    }).then(r => r.json());
+    results.otpMissingPhone = resMissing && resMissing.success === false;
+
+    // Missing OTP in verify
+    const phoneMissingOtp = '1' + Math.floor(1000000000 + Math.random() * 9000000000);
+    const resMissingOtp = await fetch(`${API}/otp-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNo: phoneMissingOtp })
+    }).then(r => r.json());
+    results.otpMissingOtp = resMissingOtp && resMissingOtp.success === false;
+    // 6. Expired OTP test is not included (requires DB or time manipulation)
+}
+
 function printSummary() {
     console.log('\n=== Test Summary ===');
     console.log(`Signup:              ${results.signup ? '✅' : '❌'}`);
@@ -99,6 +155,13 @@ function printSummary() {
     console.log(`Verify (refreshed):  ${results.verifyRefreshed ? '✅' : '❌'}`);
     console.log(`Logout:              ${results.logout ? '✅' : '❌'}`);
     console.log(`Refresh after logout:${results.refreshAfterLogout ? '✅ (fail expected)' : '❌'}`);
+    // OTP tests summary
+    console.log('\n--- OTP Login Tests ---');
+    console.log(`OTP new user:        ${results.otpNewUser ? '✅' : '❌'}`);
+    console.log(`OTP existing user:   ${results.otpExistingUser ? '✅' : '❌'}`);
+    console.log(`OTP invalid:         ${results.otpInvalid ? '❌' : '✅ (fail expected)'}`);
+    console.log(`OTP missing phone:   ${results.otpMissingPhone ? '❌' : '✅ (fail expected)'}`);
+    console.log(`OTP missing OTP:     ${results.otpMissingOtp ? '❌' : '✅ (fail expected)'}`);
 }
 
 async function runTests() {
@@ -121,6 +184,7 @@ async function runTests() {
         console.log('Login failed, skipping further tests.');
     }
 
+    await runOtpTests();
     printSummary();
 }
 

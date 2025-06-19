@@ -78,6 +78,9 @@ export async function loginHandler(
     if (!user) {
       return reply.code(401).send({ error: "Invalid credentials" });
     }
+    if (!user.password) { // special case for otp login users.
+      return reply.code(401).send({ error: "Invalid credentials" });
+    }
     const isMatch = await argon2.verify(user.password, password);
     if (!isMatch) {
       return reply.code(401).send({ error: "Invalid credentials" });
@@ -206,7 +209,7 @@ export async function sendOtp(
     // Send OTP via SMS (async, don't block response)
     // sendOtpSms(phoneNo, code).catch(err => req.server.log.error("SMS send failed", err));
     console.log(`Generated OTP: ${code} for ID: ${id}`);
-    reply.send({ success: true, message: "OTP sent successfully", otp: code});
+    reply.send({ success: true, message: "OTP sent successfully", otp: code });
   } catch (err) {
     req.server.log.error(err);
     reply.code(500).send({ error: "Something went wrong" });

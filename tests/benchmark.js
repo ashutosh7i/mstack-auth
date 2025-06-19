@@ -52,6 +52,24 @@ async function logout(refreshToken) {
     return res.json();
 }
 
+async function otpSend(phoneNo) {
+    const res = await fetch(`${API}/otp-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNo })
+    });
+    return res.json();
+}
+
+async function otpVerify(phoneNo, otp) {
+    const res = await fetch(`${API}/otp-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNo, otp })
+    });
+    return res.json();
+}
+
 // --- Concurrent Benchmark (sequential, one after another) ---
 async function runConcurrentBenchmark() {
     const metrics = {
@@ -175,6 +193,53 @@ async function runParallelBenchmark() {
     };
 }
 
+async function runOTPBenchmark() {
+
+    const otpMetrics = [];
+    for (let i = 0; i < ITERATIONS; i++) {
+        const phoneNo = '1' + Math.floor(1000000000 + Math.random() * 9000000000);
+        let t0 = performance.now();
+        const sendRes = await otpSend(phoneNo);
+        let t1 = performance.now();
+        const sendTime = t1 - t0;
+        let verifyTime = null;
+        if (sendRes.success && sendRes.otp) {
+            t0 = performance.now();
+            const verifyRes = await otpVerify(phoneNo, sendRes.otp);
+            t1 = performance.now();
+            verifyTime = t1 - t0;
+        }
+        otpMetrics.push({ send: sendTime, verify: verifyTime });
+    }
+    function avg(arr) {
+        const filtered = arr.filter(x => typeof x === 'number');
+        return filtered.length ? (filtered.reduce((a, b) => a + b, 0) / filtered.length).toFixed(2) : 'n/a';
+    }
+    console.log(`\n--- OTP Benchmark Results (Concurrent) ---`);
+    console.log(`Send OTP   - avg: ${avg(otpMetrics.map(m => m.send))} ms`);
+    console.log(`Verify OTP - avg: ${avg(otpMetrics.map(m => m.verify))} ms`);
+
+    // --- OTP Benchmark (parallel) ---
+    const otpParallel = await Promise.all(Array.from({ length: ITERATIONS }, async () => {
+        const phoneNo = '1' + Math.floor(1000000000 + Math.random() * 9000000000);
+        let t0 = performance.now();
+        const sendRes = await otpSend(phoneNo);
+        let t1 = performance.now();
+        const sendTime = t1 - t0;
+        let verifyTime = null;
+        if (sendRes.success && sendRes.otp) {
+            t0 = performance.now();
+            const verifyRes = await otpVerify(phoneNo, sendRes.otp);
+            t1 = performance.now();
+            verifyTime = t1 - t0;
+        }
+        return { send: sendTime, verify: verifyTime };
+    }));
+    console.log(`\n--- OTP Benchmark Results (Parallel) ---`);
+    console.log(`Send OTP   - avg: ${avg(otpParallel.map(m => m.send))} ms`);
+    console.log(`Verify OTP - avg: ${avg(otpParallel.map(m => m.verify))} ms`);
+}
+
 async function main() {
     console.log('Running concurrent benchmark...');
     const concurrent = await runConcurrentBenchmark();
@@ -196,3 +261,4 @@ async function main() {
 }
 
 main();
+runOTPBenchmark();

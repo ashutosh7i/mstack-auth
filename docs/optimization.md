@@ -45,3 +45,27 @@ Login    - avg: 368.02 ms
 Verify   - avg: 8.51 ms
 Refresh  - avg: 148.99 ms
 Logout   - avg: 193.09 ms
+
+## Benchmark after otp login
+
+--- OTP Benchmark Results (Concurrent) ---
+Send OTP   - avg: 10.45 ms
+Verify OTP - avg: 40.52 ms
+
+--- OTP Benchmark Results (Parallel) ---
+Send OTP   - avg: 188.81 ms
+Verify OTP - avg: 1301.29 ms
+
+=== Concurrent Benchmark Results ===
+Signup   - avg: 23.43 ms
+Login    - avg: 27.77 ms
+Verify   - avg: 2.05 ms
+Refresh  - avg: 7.16 ms
+Logout   - avg: 14.13 ms
+
+=== Parallel Benchmark Results ===
+Signup   - avg: 311.36 ms
+Login    - avg: 624.47 ms
+Verify   - avg: 3.32 ms
+Refresh  - avg: 335.34 ms
+Logout   - avg: 377.05 ms
